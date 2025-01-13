@@ -49,15 +49,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-
       - name: Install Heroku CLI
-        run: gem install heroku-cli
-
-      - name: Set up Heroku credentials
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+          
+      - name: Setup Heroku credentials
         run: |
           cat > ~/.netrc <<EOF
           machine api.heroku.com
@@ -72,6 +68,6 @@ jobs:
       - name: Deploy to Heroku
         run: |
           git config --global user.email "${{ secrets.HEROKU_EMAIL }}"
-          git config --global user.name "CI/CD Deployment"
-          git remote add heroku https://git.heroku.com/calculator-app-xyz.git
-          git push heroku main:main --force
+          git config --global user.name "GitHub Actions"
+          heroku git:remote -a calculator-app-xyz
+          git push heroku main --force
