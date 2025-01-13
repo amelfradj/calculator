@@ -1,1 +1,2 @@
 web: vendor/bin/heroku-php-apache2 public/
+release: composer install --no-dev --optimize-autoloader && php bin/console cache:clear && php bin/console cache:warmup && php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration

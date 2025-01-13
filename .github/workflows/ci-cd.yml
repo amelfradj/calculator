@@ -39,12 +39,6 @@ jobs:
           php bin/console doctrine:schema:create --env=test
           php bin/phpunit
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: app
-          path: .
-          
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
@@ -52,27 +46,16 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
-      
-      - name: Install Composer dependencies for production
-        run: |
-          composer install --no-dev --prefer-dist --optimize-autoloader
-          composer dump-env prod
-      
-      - name: Clear and warm up cache
-        run: |
-          php bin/console cache:clear --env=prod --no-debug
-          php bin/console cache:warmup --env=prod --no-debug
 
       - name: Deploy to Heroku
-        uses: akhileshns/heroku-deploy@v3.13.15
+        uses: AkhileshNS/heroku-deploy@v3.12.14
         with:
           heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: "calculator-app-xyz"
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
-          buildpack: "heroku/php"
+          heroku_app_name: "calculator-app-xyz"
+          usedocker: false
+          dontuseforce: false
+          appdir: "."
+          docker_heroku_process_type: "web"
+          stack: "heroku-22"
+          branch: "main"
