@@ -1,3 +1,4 @@
+# .github/workflows/ci-cd.yml
 name: CI/CD Pipeline
 
 on:
@@ -9,7 +10,6 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
     services:
       mysql:
         image: mysql:8.0.31
@@ -18,11 +18,7 @@ jobs:
           MYSQL_DATABASE: calculator_test
         ports:
           - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -proot --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       - uses: actions/checkout@v3
@@ -32,13 +28,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
-
-      - name: Wait for MySQL
-        run: |
-          until mysqladmin ping -h 127.0.0.1 -u root -proot --silent; do
-            echo "Waiting for MySQL to be ready..."
-            sleep 3
-          done
+          coverage: xdebug
 
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress
@@ -49,30 +39,35 @@ jobs:
           php bin/console doctrine:schema:create --env=test
           php bin/phpunit
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app
+          path: .
+          
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
+    
     steps:
       - uses: actions/checkout@v3
-
-      - name: Setup PHP for deployment
+      
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
-
-      - name: Set environment to production
-        run: export APP_ENV=prod
-
-      - name: Clear Symfony cache
-        run: php bin/console cache:clear --no-warmup --env=prod
-
+      
       - name: Install Composer dependencies for production
         run: |
-          composer install --no-dev --optimize-autoloader
+          composer install --no-dev --prefer-dist --optimize-autoloader
           composer dump-env prod
+      
+      - name: Clear and warm up cache
+        run: |
+          php bin/console cache:clear --env=prod --no-debug
+          php bin/console cache:warmup --env=prod --no-debug
 
       - name: Deploy to Heroku
         uses: akhileshns/heroku-deploy@v3.13.15
@@ -81,4 +76,3 @@ jobs:
           heroku_app_name: "calculator-app-xyz"
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
           buildpack: "heroku/php"
-          procfile: "web: vendor/bin/heroku-php-apache2 public/"
