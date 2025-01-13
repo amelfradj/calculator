@@ -1,4 +1,3 @@
-# .github/workflows/ci-cd.yml
 name: CI/CD Pipeline
 
 on:
@@ -19,7 +18,11 @@ jobs:
           MYSQL_DATABASE: calculator_test
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - uses: actions/checkout@v3
@@ -29,7 +32,13 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
-          coverage: xdebug
+
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -u root -proot --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 3
+          done
 
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress
@@ -52,9 +61,18 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
 
-      - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader
+      - name: Set environment to production
+        run: export APP_ENV=prod
+
+      - name: Clear Symfony cache
+        run: php bin/console cache:clear --no-warmup --env=prod
+
+      - name: Install Composer dependencies for production
+        run: |
+          composer install --no-dev --optimize-autoloader
+          composer dump-env prod
 
       - name: Deploy to Heroku
         uses: akhileshns/heroku-deploy@v3.13.15
@@ -63,3 +81,4 @@ jobs:
           heroku_app_name: "calculator-app-xyz"
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
           buildpack: "heroku/php"
+          procfile: "web: vendor/bin/heroku-php-apache2 public/"
