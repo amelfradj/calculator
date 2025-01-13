@@ -1,0 +1,62 @@
+# .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0.31
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: calculator_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+        coverage: xdebug
+
+    - name: Copy .env.test
+      run: php -r "file_exists('.env.test') || copy('.env.test.dist', '.env.test');"
+
+    - name: Install Dependencies
+      run: |
+        composer install --prefer-dist --no-progress
+        composer require --dev php-cs-fixer
+
+    - name: Run Tests
+      run: |
+        php bin/console doctrine:database:create --env=test --if-not-exists
+        php bin/console doctrine:schema:create --env=test
+        php bin/phpunit
+
+    - name: Check Code Quality
+      run: make quality
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to production
+      # Remplacez cette étape par votre logique de déploiement
+      run: |
+        echo "Déploiement en production..."
+        # Exemple avec SSH :
+        # ssh user@your-server 'cd /var/www/calculator && git pull && make deploy'

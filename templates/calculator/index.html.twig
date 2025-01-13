@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Calculatrice{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .calculator {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .result {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="calculator">
+        <h1 class="text-center mb-4">Calculatrice</h1>
+        
+        <div id="result" class="result text-center">
+            Résultat : <span id="resultValue">0</span>
+        </div>
+
+        <form id="calculatorForm" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="firstNumber" class="form-label">Premier nombre</label>
+                <input type="number" class="form-control" id="firstNumber" required step="any">
+            </div>
+
+            <div class="mb-3">
+                <label for="operator" class="form-label">Opérateur</label>
+                <select class="form-select" id="operator" required>
+                    <option value="+">Addition (+)</option>
+                    <option value="-">Soustraction (-)</option>
+                    <option value="*">Multiplication (*)</option>
+                    <option value="/">Division (/)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="secondNumber" class="form-label">Second nombre</label>
+                <input type="number" class="form-control" id="secondNumber" required step="any">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Calculer</button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.getElementById('calculatorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                first: document.getElementById('firstNumber').value,
+                second: document.getElementById('secondNumber').value,
+                operator: document.getElementById('operator').value
+            };
+
+            try {
+                const response = await fetch('{{ path('calculator_calculate') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('resultValue').textContent = 'Erreur: ' + data.error;
+                } else {
+                    document.getElementById('resultValue').textContent = data.result;
+                }
+            } catch (error) {
+                document.getElementById('resultValue').textContent = 'Erreur de calcul';
+            }
+        });
+    </script>
+{% endblock %}
