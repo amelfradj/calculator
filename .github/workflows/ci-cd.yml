@@ -1,3 +1,4 @@
+# .github/workflows/ci-cd.yml
 name: CI/CD Pipeline
 
 on:
@@ -17,11 +18,7 @@ jobs:
           MYSQL_DATABASE: calculator_test
         ports:
           - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
     - uses: actions/checkout@v3
@@ -32,18 +29,6 @@ jobs:
         php-version: '8.2'
         extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
         coverage: xdebug
-
-    - name: Wait for MySQL to be ready
-      run: |
-        until mysqladmin ping -h localhost -u root -proot --silent; do
-          echo "Waiting for MySQL to be ready..."
-          sleep 3
-        done
-
-    - name: Verify Test Setup
-      run: |
-        php bin/console doctrine:database:create --env=test --if-not-exists
-        php bin/console doctrine:schema:create --env=test
 
     - name: Install Dependencies
       run: composer install --prefer-dist --no-progress
@@ -58,14 +43,10 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-
-    - name: Install Heroku CLI
-      run: |
-        curl https://cli-assets.heroku.com/install.sh | sh
-
+    
     - name: Deploy to Heroku
       uses: akhileshns/heroku-deploy@v3.12.14
       with:
         heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-        heroku_app_name: "calculator-app-xyz"
+        heroku_app_name: "calculator-app-xyz"  # remplacez par votre nom d'app
         heroku_email: ${{ secrets.HEROKU_EMAIL }}
