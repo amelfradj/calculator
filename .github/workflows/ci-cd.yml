@@ -40,36 +40,26 @@ jobs:
           php bin/console doctrine:schema:create --env=test
           php bin/phpunit
 
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v3
-        with:
-          name: php-app
-          path: .
-
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@v3
+
+      - name: Setup PHP for deployment
+        uses: shivammathur/setup-php@v2
         with:
-          name: php-app
-          path: .
+          php-version: '8.2'
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
 
       - name: Deploy to Heroku
         uses: akhileshns/heroku-deploy@v3.13.15
         with:
           heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: "calculator-app-xyz" # Remplacez par le nom exact de votre app
+          heroku_app_name: "calculator-app-xyz"
           heroku_email: ${{ secrets.HEROKU_EMAIL }}
-          justlogin: true
-          
-      - name: Git push to Heroku
-        run: |
-          git config --global user.email "${{ secrets.HEROKU_EMAIL }}"
-          git config --global user.name "CI/CD Bot"
-          git init
-          git add .
-          git commit -m "Deploy from GitHub Actions"
-          git push https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/mysterious-wildwood-57361.git HEAD:main --force
+          buildpack: "heroku/php"
